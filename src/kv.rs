@@ -1,26 +1,32 @@
-use std::collections::HashMap;
+use std::path::PathBuf;
+use std::fs;
+
+use crate::Result;
 
 #[derive(Default)]
 pub struct KvStore {
-    map: HashMap<String, String>,
+    path: PathBuf,
 }
 
 impl KvStore {
-    pub fn new() -> KvStore {
-        KvStore {
-            map: HashMap::new(),
-        }
+    pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
+        let path = path.into();
+        fs::create_dir_all(&path)?;
+
+        Ok(KvStore {
+            path,
+        })
     }
 
-    pub fn get(&self, key: String) -> Option<String> {
-        self.map.get(&key).cloned()
+    pub fn get(&self, key: String) -> Result<Option<String>> {
+        panic!();
     }
 
-    pub fn set(&mut self, key: String, value: String) {
-        self.map.insert(key, value);
+    pub fn set(&mut self, key: String, value: String) -> Result<()> {
+        panic!();
     }
 
-    pub fn remove(&mut self, key: String) {
-        self.map.remove(&key);
+    pub fn remove(&mut self, key: String) -> Result<()> {
+        panic!();
     }
 }
