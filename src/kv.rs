@@ -1,11 +1,14 @@
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-use std::fs;
+
+use serde::{Deserialize, Serialize};
 
 use crate::Result;
 
-#[derive(Default)]
 pub struct KvStore {
     path: PathBuf,
+    writer: BufWriter<File>,
 }
 
 impl KvStore {
@@ -13,9 +16,17 @@ impl KvStore {
         let path = path.into();
         fs::create_dir_all(&path)?;
 
-        Ok(KvStore {
-            path,
-        })
+        let file_path = path.join("store.log");
+
+        let writer = BufWriter::new(
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .append(true)
+                .open(&file_path)?,
+        );
+
+        Ok(KvStore { path, writer })
     }
 
     pub fn get(&self, key: String) -> Result<Option<String>> {
@@ -23,10 +34,19 @@ impl KvStore {
     }
 
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        panic!();
+        let cmd = Command::Set { key, value };
+        serde_json::to_writer(&mut self.writer, &cmd)?;
+        self.writer.flush()?;
+        Ok(())
     }
 
     pub fn remove(&mut self, key: String) -> Result<()> {
         panic!();
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Command {
+    Set { key: String, value: String },
+    Remove { key: String },
 }
