@@ -1,6 +1,7 @@
 use clap::{App, Arg};
-use kvs::{KvStore, Result, KvsError};
+use kvs::{KvStore, KvsError, Result};
 use std::env::current_dir;
+use std::process::exit;
 
 fn main() -> Result<()> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
@@ -30,7 +31,17 @@ fn main() -> Result<()> {
         .get_matches();
 
     match matches.subcommand() {
-        ("get", Some(matches)) => unimplemented!("unimplemented"),
+        ("get", Some(matches)) => {
+            let key = matches.value_of("KEY").expect("KEY argument missing");
+
+            let store = KvStore::open(current_dir()?)?;
+            if let Some(value) = store.get(key.to_string())? {
+                println!("{}", value);
+            } else {
+                println!("Key not found");
+            }
+            Ok(())
+        }
         ("set", Some(matches)) => {
             let key = matches.value_of("KEY").expect("KEY argument missing");
             let value = matches.value_of("VALUE").expect("VALUE argument missing");
@@ -38,7 +49,19 @@ fn main() -> Result<()> {
             let mut store = KvStore::open(current_dir()?)?;
             store.set(key.to_string(), value.to_string())
         }
-        ("rm", Some(matches)) => unimplemented!("unimplemented"),
+        ("rm", Some(matches)) => {
+            let key = matches.value_of("KEY").expect("KEY argument missing");
+
+            let mut store = KvStore::open(current_dir()?)?;
+            match store.remove(key.to_string()) {
+                Ok(()) => Ok(()),
+                Err(KvsError::KeyNotFound) => {
+                    println!("Key not found");
+                    exit(1);
+                }
+                Err(e) => return Err(e)
+            }
+        }
         _ => panic!(),
     }
 }

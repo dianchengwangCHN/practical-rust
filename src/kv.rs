@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::Result;
+use crate::{KvsError, Result};
 
 pub struct KvStore {
     path: PathBuf,
     writer: BufWriter<File>,
+    reader: BufReader<File>,
+    map: HashMap<String, String>,
 }
 
 impl KvStore {
@@ -26,22 +29,42 @@ impl KvStore {
                 .open(&file_path)?,
         );
 
-        Ok(KvStore { path, writer })
+        let reader = BufReader::new(File::open(&file_path)?);
+
+        let map = HashMap::new();
+
+        Ok(KvStore {
+            path,
+            writer,
+            reader,
+            map,
+        })
     }
 
     pub fn get(&self, key: String) -> Result<Option<String>> {
-        panic!();
+        Ok(self.map.get(&key).cloned())
     }
 
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let cmd = Command::Set { key, value };
+        let cmd = Command::Set {
+            key: key.clone(),
+            value: value.clone(),
+        };
         serde_json::to_writer(&mut self.writer, &cmd)?;
         self.writer.flush()?;
+        self.map.insert(key, value);
         Ok(())
     }
 
     pub fn remove(&mut self, key: String) -> Result<()> {
-        panic!();
+        let cmd = Command::Remove { key: key.clone() };
+        serde_json::to_writer(&mut self.writer, &cmd)?;
+        self.writer.flush()?;
+        if let Some(_) = self.map.remove(&key) {
+            Ok(())
+        } else {
+            Err(KvsError::KeyNotFound)
+        }
     }
 }
 
