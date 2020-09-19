@@ -4,6 +4,7 @@ use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Deserializer;
 
 use crate::{KvsError, Result};
 
@@ -23,15 +24,17 @@ impl KvStore {
 
         let writer = BufWriter::new(
             OpenOptions::new()
-                .create(true)
-                .write(true)
-                .append(true)
-                .open(&file_path)?,
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(&file_path)?,
         );
 
-        let reader = BufReader::new(File::open(&file_path)?);
+        let mut reader = BufReader::new(File::open(&file_path)?);
 
-        let map = HashMap::new();
+        let mut map = HashMap::new();
+
+        load(&mut reader, &mut map);
 
         Ok(KvStore {
             path,
@@ -72,4 +75,19 @@ impl KvStore {
 enum Command {
     Set { key: String, value: String },
     Remove { key: String },
+}
+
+fn load(reader: &mut BufReader<File>, map: &mut HashMap<String, String>) -> Result<()> {
+    let mut stream = Deserializer::from_reader(reader).into_iter::<Command>();
+    while let Some(cmd) = stream.next() {
+        match cmd? {
+            Command::Set { key, value } => {
+                map.insert(key, value);
+            }
+            Command::Remove { key } => {
+                map.remove(&key);
+            }
+        }
+    }
+    Ok(())
 }
